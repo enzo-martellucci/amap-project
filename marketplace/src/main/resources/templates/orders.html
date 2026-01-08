@@ -34,8 +34,10 @@
                     <p class="text-sm text-gray-600">Producer: <span th:text="${order.producerId}"></span></p>
                 </div>
                 <span class="px-4 py-2 rounded text-sm font-semibold"
-                      th:classappend="${order.status == 'pending' ? 'bg-yellow-200 text-yellow-800' : 'bg-green-200 text-green-800'}"
-                      th:text="${order.status}"></span>
+                      th:classappend="${order.status.name() == 'PENDING' ? 'bg-yellow-200 text-yellow-800' :
+                                         (order.status.name() == 'ACCEPTED' ? 'bg-green-200 text-green-800' :
+                                         (order.status.name() == 'REJECTED' ? 'bg-red-200 text-red-800' : 'bg-gray-200 text-gray-800'))}"
+                      th:text="${order.status.displayName}"></span>
             </div>
 
             <div class="border-t pt-4">

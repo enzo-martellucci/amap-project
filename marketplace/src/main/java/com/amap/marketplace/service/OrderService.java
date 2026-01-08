@@ -3,6 +3,7 @@ package com.amap.marketplace.service;
 import com.amap.marketplace.model.Cart;
 import com.amap.marketplace.model.Order;
 import com.amap.marketplace.model.OrderItem;
+import com.amap.marketplace.model.OrderStatus;
 import com.amap.marketplace.repository.OrderRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -33,7 +34,7 @@ public class OrderService {
             order.setProducerId(producerId);
             order.setClientId(clientId);
             order.setDate(LocalDateTime.now());
-            order.setStatus("pending");
+            order.setStatus(OrderStatus.PENDING);  // Créé avec statut PENDING
 
             List<OrderItem> orderItems = new ArrayList<>();
             double total = 0.0;

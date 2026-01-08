@@ -25,7 +25,9 @@ public class Order {
     private String clientId;
 
     private LocalDateTime date;
-    private String status;
+
+    private OrderStatus status;  // Changé de String à OrderStatus
+
     private List<OrderItem> products;
     private Double total;
 }

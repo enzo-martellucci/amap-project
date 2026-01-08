@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 @Controller
 @RequestMapping("/cart")
@@ -42,7 +43,8 @@ public class CartController {
     @PostMapping("/add")
     public String addToCart(@RequestParam String productId,
                             @RequestParam(defaultValue = "1") Integer quantity,
-                            HttpSession session) {
+                            HttpSession session,
+                            RedirectAttributes redirectAttributes) {
         String userId = (String) session.getAttribute("userId");
         if (userId == null) {
             return "redirect:/login";
@@ -55,8 +57,25 @@ public class CartController {
 
         Product product = productService.getProductById(productId).orElse(null);
         if (product != null) {
+            // Vérifier le stock disponible
+            int currentQuantityInCart = cart.getItems().stream()
+                    .filter(item -> item.getProductId().equals(productId))
+                    .findFirst()
+                    .map(item -> item.getQuantity())
+                    .orElse(0);
+
+            int totalQuantity = currentQuantityInCart + quantity;
+
+            if (totalQuantity > product.getStock()) {
+                redirectAttributes.addFlashAttribute("error",
+                        "Not enough stock! Only " + product.getStock() + " available.");
+                return "redirect:/catalog";
+            }
+
             cart.addItem(product, quantity);
             session.setAttribute("cart", cart);
+            redirectAttributes.addFlashAttribute("success",
+                    "Product added to cart!");
         }
 
         return "redirect:/catalog";
@@ -73,7 +92,7 @@ public class CartController {
     }
 
     @PostMapping("/checkout")
-    public String checkout(HttpSession session) {
+    public String checkout(HttpSession session, RedirectAttributes redirectAttributes) {
         String userId = (String) session.getAttribute("userId");
         if (userId == null) {
             return "redirect:/login";
@@ -81,9 +100,21 @@ public class CartController {
 
         Cart cart = (Cart) session.getAttribute("cart");
         if (cart != null && !cart.getItems().isEmpty()) {
+            // Vérifier les stocks avant de créer les commandes
+            for (var item : cart.getItems()) {
+                Product product = productService.getProductById(item.getProductId()).orElse(null);
+                if (product == null || product.getStock() < item.getQuantity()) {
+                    redirectAttributes.addFlashAttribute("error",
+                            "Some products are out of stock. Please update your cart.");
+                    return "redirect:/cart";
+                }
+            }
+
             orderService.createOrdersFromCart(userId, cart);
             cart.clear();
             session.setAttribute("cart", cart);
+            redirectAttributes.addFlashAttribute("success",
+                    "Order placed successfully!");
         }
 
         return "redirect:/orders";

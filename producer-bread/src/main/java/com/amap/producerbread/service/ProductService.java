@@ -28,4 +28,15 @@ public class ProductService {
     public void deleteProduct(String id) {
         productRepository.deleteById(id);
     }
+
+    // Nouvelle méthode pour mettre à jour le stock
+    public void updateStock(String productId, int quantityChange) {
+        Optional<Product> productOpt = productRepository.findById(productId);
+        if (productOpt.isPresent()) {
+            Product product = productOpt.get();
+            int newStock = product.getStock() + quantityChange;
+            product.setStock(Math.max(0, newStock)); // Ne jamais avoir de stock négatif
+            productRepository.save(product);
+        }
+    }
 }

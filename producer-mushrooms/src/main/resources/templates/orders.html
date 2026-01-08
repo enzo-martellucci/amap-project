@@ -23,9 +23,11 @@
                         <p class="font-semibold">Order #<span th:text="${order.id}"></span></p>
                         <p class="text-sm text-gray-600" th:text="${#temporals.format(order.date, 'dd/MM/yyyy HH:mm')}"></p>
                     </div>
-                    <span class="px-3 py-1 rounded text-sm"
-                          th:classappend="${order.status == 'pending' ? 'bg-yellow-200 text-yellow-800' : 'bg-green-200 text-green-800'}"
-                          th:text="${order.status}"></span>
+                    <span class="px-3 py-1 rounded text-sm font-semibold"
+                          th:classappend="${order.status.name() == 'PENDING' ? 'bg-yellow-200 text-yellow-800' :
+                                             (order.status.name() == 'ACCEPTED' ? 'bg-green-200 text-green-800' :
+                                             (order.status.name() == 'REJECTED' ? 'bg-red-200 text-red-800' : 'bg-gray-200 text-gray-800'))}"
+                          th:text="${order.status.displayName}"></span>
                 </div>
 
                 <div class="mt-2">
@@ -40,6 +42,20 @@
                 </div>
 
                 <p class="mt-2 font-bold">Total: <span th:text="${order.total} + '€'"></span></p>
+
+                <!-- Action buttons for PENDING orders -->
+                <div class="mt-3 flex gap-2" th:if="${order.status.name() == 'PENDING'}">
+                    <form method="post" style="display:inline;" th:action="@{/orders/accept/{id}(id=${order.id})}">
+                        <button class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600" type="submit">
+                            Accept Order
+                        </button>
+                    </form>
+                    <form method="post" style="display:inline;" th:action="@{/orders/reject/{id}(id=${order.id})}">
+                        <button class="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600" type="submit">
+                            Reject Order
+                        </button>
+                    </form>
+                </div>
             </div>
         </div>
     </div>
