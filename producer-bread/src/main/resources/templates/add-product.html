@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Add Product</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100">
+<div class="container mx-auto px-4 py-8 max-w-2xl">
+    <h1 class="text-3xl font-bold mb-6" th:text="${producerName}"></h1>
+
+    <div class="bg-white rounded-lg shadow-md p-6">
+        <h2 class="text-xl font-semibold mb-4">Add New Product</h2>
+
+        <form method="post" th:action="@{/products/add}" th:object="${product}">
+            <div class="mb-4">
+                <label class="block text-gray-700 mb-2">Name</label>
+                <input class="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" required th:field="*{name}"
+                       type="text">
+            </div>
+
+            <div class="mb-4">
+                <label class="block text-gray-700 mb-2">Description</label>
+                <textarea class="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" required rows="3"
+                          th:field="*{description}"></textarea>
+            </div>
+
+            <div class="mb-4">
+                <label class="block text-gray-700 mb-2">Price (€)</label>
+                <input class="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" required step="0.01" th:field="*{price}"
+                       type="number">
+            </div>
+
+            <div class="mb-4">
+                <label class="block text-gray-700 mb-2">Stock</label>
+                <input class="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" required th:field="*{stock}"
+                       type="number">
+            </div>
+
+            <div class="flex gap-2">
+                <button class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600" type="submit">
+                    Add Product
+                </button>
+                <a class="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600" href="/products">
+                    Cancel
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+</body>
+</html>

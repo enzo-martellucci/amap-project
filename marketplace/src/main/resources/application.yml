@@ -1,0 +1,8 @@
+spring:
+  application:
+    name: marketplace
+  mongodb:
+    uri: ${SPRING_DATA_MONGODB_URI:mongodb://localhost:27020/amap}
+
+server:
+  port: 8080

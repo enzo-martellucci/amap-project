@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Cart - AMAP Marketplace</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100">
+<nav class="bg-white shadow-md mb-6">
+    <div class="container mx-auto px-4 py-4 flex justify-between items-center">
+        <h1 class="text-2xl font-bold">AMAP Marketplace</h1>
+        <div class="flex gap-4 items-center">
+            <span class="text-gray-700">Welcome, <span th:text="${userName}"></span>!</span>
+            <a class="text-blue-500 hover:underline" href="/catalog">Catalog</a>
+            <a class="text-blue-500 hover:underline" href="/orders">My Orders</a>
+            <a class="text-red-500 hover:underline" href="/logout">Logout</a>
+        </div>
+    </div>
+</nav>
+
+<div class="container mx-auto px-4 py-8 max-w-4xl">
+    <h2 class="text-3xl font-bold mb-6">My Cart</h2>
+
+    <div class="bg-white rounded-lg shadow-md p-6 text-center text-gray-500" th:if="${cart.items.isEmpty()}">
+        Your cart is empty. <a class="text-blue-500 hover:underline" href="/catalog">Go shopping!</a>
+    </div>
+
+    <div th:unless="${cart.items.isEmpty()}">
+        <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+            <table class="w-full">
+                <thead>
+                <tr class="border-b">
+                    <th class="text-left py-2">Product</th>
+                    <th class="text-left py-2">Price</th>
+                    <th class="text-left py-2">Quantity</th>
+                    <th class="text-left py-2">Subtotal</th>
+                    <th class="text-left py-2">Actions</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr class="border-b" th:each="item : ${cart.items}">
+                    <td class="py-3" th:text="${item.name}"></td>
+                    <td class="py-3" th:text="${item.price} + '€'"></td>
+                    <td class="py-3" th:text="${item.quantity}"></td>
+                    <td class="py-3 font-semibold" th:text="${item.subtotal} + '€'"></td>
+                    <td class="py-3">
+                        <form method="post" style="display:inline;" th:action="@{/cart/remove}">
+                            <input name="productId" th:value="${item.productId}" type="hidden">
+                            <button class="text-red-500 hover:underline" type="submit">Remove</button>
+                        </form>
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+
+            <div class="mt-6 flex justify-between items-center">
+                <div>
+                    <p class="text-2xl font-bold">Total: <span th:text="${cart.total} + '€'"></span></p>
+                </div>
+                <div class="flex gap-4">
+                    <a class="bg-gray-500 text-white px-6 py-3 rounded hover:bg-gray-600" href="/catalog">
+                        Continue Shopping
+                    </a>
+                    <form method="post" th:action="@{/cart/checkout}">
+                        <button class="bg-green-500 text-white px-6 py-3 rounded hover:bg-green-600"
+                                type="submit">
+                            Checkout
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+</body>
+</html>
