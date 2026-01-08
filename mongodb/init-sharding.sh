@@ -1,6 +1,6 @@
 #!/bin/bash
 
-echo "=== Initializing Config Server ==="
+echo "=== Step 2: Initializing Config Server ==="
 docker exec -it configsvr mongosh --port 27019 --eval '
 rs.initiate({
   _id: "configRS",
@@ -9,41 +9,40 @@ rs.initiate({
 })
 '
 
-echo "Waiting for Config Server to be ready..."
+echo "Waiting for Config Server..."
 sleep 5
 
-echo "=== Initializing Shard 1 (Mushrooms) ==="
-docker exec -it shard1 mongosh --port 27018 --eval '
-rs.initiate({
-  _id: "shard1RS",
-  members: [{ _id: 0, host: "shard1:27018" }]
-})
-'
-
-echo "Waiting for Shard 1 to be ready..."
-sleep 5
-
-echo "=== Initializing Shard 2 (Bread) ==="
-docker exec -it shard2 mongosh --port 27017 --eval '
-rs.initiate({
-  _id: "shard2RS",
-  members: [{ _id: 0, host: "shard2:27017" }]
-})
-'
-
-echo "Waiting for Shards to be ready..."
-sleep 5
-
-echo "=== Adding Shards to Mongos ==="
+echo "=== Step 5: Enabling Sharding on Database ==="
 docker exec -it mongos mongosh --port 27020 --eval '
-sh.addShard("shard1RS/shard1:27018");
-sh.addShard("shard2RS/shard2:27017");
-'
-
-echo "=== Enabling Sharding on Database ==="
-docker exec -it mongos mongosh --port 27020 --eval '
-use amap;
 sh.enableSharding("amap");
 '
 
-echo "=== Sharding initialization complete! ==="
+echo "Creating indexes on products collection..."
+docker exec -it mongos mongosh --port 27020 --eval '
+use amap;
+db.products.createIndex({ "producer_id": 1 });
+'
+
+echo "Sharding products collection..."
+docker exec -it mongos mongosh --port 27020 --eval '
+use amap;
+sh.shardCollection("amap.products", { "producer_id": 1 });
+'
+
+echo "Creating indexes on orders collection..."
+docker exec -it mongos mongosh --port 27020 --eval '
+use amap;
+db.orders.createIndex({ "producer_id": 1 });
+'
+
+echo "Sharding orders collection..."
+docker exec -it mongos mongosh --port 27020 --eval '
+use amap;
+sh.shardCollection("amap.orders", { "producer_id": 1 });
+'
+
+echo ""
+echo "✅ Sharding system initialized!"
+echo ""
+echo "Now run: ./add-producer.sh <producer_id> <shard_name>"
+echo "Example: ./add-producer.sh mushrooms shard1RS"

@@ -3,365 +3,209 @@
 **Team Members:**
 
 - [Ton Nom]
-- [Nom du binôme si applicable]
+- [Nom du binôme]
 
-## Project Description
+---
 
-Marketplace application for an AMAP (Association for the Maintenance of Family Farming) allowing customers to order products from multiple local producers through a centralized platform.
+## Description
 
-The system consists of:
+Marketplace pour AMAP avec MongoDB sharding. Chaque producteur a son propre shard pour optimiser les performances.
 
-- **Marketplace** (central platform): customers can browse products, add to cart, and place orders
-- **Producer applications** (2): producers can manage their products and view received orders
-- **MongoDB sharded cluster**: data is sharded by producer for optimized performance
+---
 
-## Architecture
-
-- **MongoDB**: 1 config server, 2 shards (mushrooms & bread), 1 mongos router
-- **Applications** (Dockerized):
-    - Marketplace: Spring Boot (port 8080)
-    - Producer Mushrooms: Spring Boot (port 8081)
-    - Producer Bread: Spring Boot (port 8082)
-
-## Prerequisites
+## Prérequis
 
 - Docker & Docker Compose
-- Git Bash (for Windows users to run .sh scripts)
+- Git Bash (Windows)
 
-## 🚀 Quick Start (Recommended - Full Docker Setup)
+---
 
-### 1. Launch Everything with Docker
+## Lancement du projet
+
+### 1. Démarrer les conteneurs
 
 ```bash
 cd mongodb
-
-# Build and start all containers (MongoDB + Applications)
-docker-compose up -d --build
+docker-compose up -d
 ```
 
-**Wait 1-2 minutes** for all containers to start and applications to initialize.
+Attendre 30 secondes que tout démarre.
 
-### 2. Initialize MongoDB Sharding
+### 2. Initialiser le système de sharding
 
 ```bash
-# Initialize sharding configuration
 ./init-sharding.sh
-
-# Configure shards for each producer
-./add-producer-shard.sh mushrooms shard1RS
-./add-producer-shard.sh bread shard2RS
 ```
 
-### 3. Access Applications
+Ce script fait les **étapes 2 et 5** du TP :
+
+- Initialise le Config Server
+- Active le sharding sur la base `amap`
+- Crée les index sur `producer_id`
+- Configure les collections `products` et `orders`
+
+### 3. Ajouter les producteurs
+
+```bash
+./add-producer.sh mushrooms shard1RS
+./add-producer.sh bread shard2RS
+```
+
+Ce script fait les **étapes 3, 4, 6 et 7** du TP pour chaque producteur :
+
+- Initialise le replica set du shard
+- Ajoute le shard au mongos
+- Découpe les chunks par `producer_id`
+- Déplace les chunks sur le bon shard
+
+### 4. Accéder aux applications
 
 - **Marketplace**: http://localhost:8080
 - **Producer Mushrooms**: http://localhost:8081
 - **Producer Bread**: http://localhost:8082
 
-**That's it! Everything is running in Docker!** 🐳
+---
+
+## Test du système
+
+### Côté Producteur
+
+1. Aller sur http://localhost:8081
+2. Cliquer "Add Product"
+3. Ajouter un produit (ex: Shiitake, 8.50€, stock: 20)
+
+### Côté Marketplace
+
+1. Aller sur http://localhost:8080
+2. S'inscrire (Register)
+3. Ajouter des produits au panier
+4. Valider la commande (Checkout)
+5. Voir l'historique des commandes (My Orders)
+
+### Vérification des commandes
+
+1. Retourner sur http://localhost:8081
+2. Cliquer "View Orders"
+3. Voir la commande reçue
+4. Accepter ou rejeter la commande
 
 ---
 
-## Alternative: Local Development Setup
+## Ajouter un nouveau producteur
 
-If you prefer to run applications locally (outside Docker) for development:
+### Exemple : Producteur de fromage
 
-### Prerequisites
+#### 1. Modifier docker-compose.yml
 
-- Java 25 (or compatible JDK)
-- Maven
+Ajouter dans `services:` :
 
-### 1. Launch Only MongoDB
+```yaml
+  # Shard 3
+  shard3:
+    image: mongo:7.0
+    container_name: shard3
+    command: mongod --shardsvr --replSet shard3RS --port 27016 --dbpath /data/db
+    ports:
+      - "27016:27016"
+    volumes:
+      - shard3-data:/data/db
+    networks:
+      - mongo-network
 
-```bash
-cd mongodb
-
-# Start only MongoDB containers
-docker-compose up -d configsvr shard1 shard2 mongos
-
-# Initialize sharding
-./init-sharding.sh
-./add-producer-shard.sh mushrooms shard1RS
-./add-producer-shard.sh bread shard2RS
+  # Producer Cheese
+  producer-cheese:
+    build:
+      context: ../producer
+      dockerfile: Dockerfile
+    container_name: producer-cheese
+    ports:
+      - "8083:8083"
+    environment:
+      - SPRING_DATA_MONGODB_URI=mongodb://mongos:27020/amap
+      - SERVER_PORT=8083
+      - PRODUCER_ID=cheese
+      - PRODUCER_NAME=Cheese Maker
+    depends_on:
+      - mongos
+    networks:
+      - mongo-network
 ```
 
-### 2. Launch Applications Locally
+Ajouter `shard3` dans `mongos` depends_on :
 
-**Using IntelliJ IDEA:**
-
-- Open each application and click the green play button
-
-**Using Maven (command line):**
-
-Terminal 1:
-
-```bash
-cd producer-mushrooms
-mvn spring-boot:run
+```yaml
+  mongos:
+    depends_on:
+      - configsvr
+      - shard1
+      - shard2
+      - shard3
 ```
 
-Terminal 2:
+Ajouter dans `volumes:` :
 
-```bash
-cd producer-bread
-mvn spring-boot:run
+```yaml
+  shard3-data:
 ```
 
-Terminal 3:
+#### 2. Lancer le nouveau shard
 
 ```bash
-cd marketplace
-mvn spring-boot:run
+docker-compose up -d shard3
+sleep 10
+```
+
+#### 3. Configurer le producteur
+
+```bash
+./add-producer.sh cheese shard3RS
+```
+
+#### 4. Lancer l'application
+
+```bash
+docker-compose up -d producer-cheese
+```
+
+Accès : http://localhost:8083
+
+---
+
+## Nettoyer l'environnement
+
+```bash
+docker-compose down
+docker volume rm mongodb_config-data mongodb_shard1-data mongodb_shard2-data
 ```
 
 ---
 
-## Usage Guide
-
-### 1. Add Products (Producers)
-
-**Mushroom Producer:**
-
-- Go to http://localhost:8081
-- Click "Add Product"
-- Fill in product details (e.g., name: "Shiitake", price: 8.50, stock: 20)
-- Submit
-
-**Bread Producer:**
-
-- Go to http://localhost:8082
-- Click "Add Product"
-- Fill in product details (e.g., name: "Sourdough Bread", price: 4.50, stock: 15)
-- Submit
-
-### 2. Place Orders (Marketplace)
-
-**Register/Login:**
-
-- Go to http://localhost:8080
-- Click "Register" and create an account
-    - Example: John Doe, john@example.com, password123
-- Or login if you already have an account
-
-**Shop:**
-
-- Browse available products from both producers
-- Add products to your cart (you can add from both producers)
-- Click "Cart" in the navigation
-- Review your cart
-- Click "Checkout" to place your order
-
-**View Orders:**
-
-- Click "My Orders" to see your order history
-- Notice: orders are automatically split by producer
-
-### 3. View Orders (Producers)
-
-**Each producer can:**
-
-- Click "View Orders" on their application
-- See all orders received for their products
-- View order details (customer, products, quantities, total)
-
----
-
-## Verify MongoDB Sharding
-
-### Check sharding status
+## Vérifier le sharding
 
 ```bash
 docker exec -it mongos mongosh --port 27020 --eval "sh.status()"
 ```
 
-### View data distribution across shards
-
-```bash
-docker exec -it mongos mongosh --port 27020 --eval "
-use amap;
-db.products.getShardDistribution();
-db.orders.getShardDistribution();
-"
-```
-
-### Verify chunks are on correct shards
-
-```bash
-docker exec -it mongos mongosh --port 27020 --eval "
-use config;
-db.chunks.find({}, {ns:1, min:1, max:1, shard:1}).pretty();
-"
-```
-
 ---
 
-## Useful Docker Commands
-
-### View logs
-
-```bash
-cd mongodb
-
-# All services
-docker-compose logs -f
-
-# Specific service
-docker-compose logs -f marketplace
-docker-compose logs -f producer-mushrooms
-```
-
-### Restart a service
-
-```bash
-docker-compose restart marketplace
-docker-compose restart producer-mushrooms
-docker-compose restart producer-bread
-```
-
-### Stop everything
-
-```bash
-docker-compose down
-```
-
-### Rebuild applications after code changes
-
-```bash
-docker-compose up -d --build producer-mushrooms producer-bread marketplace
-```
-
----
-
-## Clean Database & Reset
-
-To completely reset the system:
-
-```bash
-cd mongodb
-
-# Stop and remove all containers
-docker-compose down
-
-# Remove all data volumes
-docker volume rm mongodb_config-data mongodb_shard1-data mongodb_shard2-data
-
-# Rebuild and restart everything
-docker-compose up -d --build
-
-# Wait 1-2 minutes, then reinitialize sharding
-./init-sharding.sh
-./add-producer-shard.sh mushrooms shard1RS
-./add-producer-shard.sh bread shard2RS
-```
-
----
-
-## Technologies Used
-
-- **Backend**: Spring Boot 4.0, Spring Data MongoDB
-- **Frontend**: Thymeleaf, Tailwind CSS (via CDN)
-- **Database**: MongoDB 7.0 (sharded cluster)
-- **Containerization**: Docker, Docker Compose
-- **Build Tool**: Maven
-
----
-
-## Project Structure
+## Architecture
 
 ```
 amap-project/
-├── marketplace/                  # Central marketplace application
-│   ├── src/
-│   ├── Dockerfile
-│   └── pom.xml
-├── producer-mushrooms/           # Mushroom producer application
-│   ├── src/
-│   ├── Dockerfile
-│   └── pom.xml
-├── producer-bread/               # Bread producer application
-│   ├── src/
-│   ├── Dockerfile
-│   └── pom.xml
-├── mongodb/                      # MongoDB & Docker configuration
-│   ├── docker-compose.yml        # Orchestrates all services
-│   ├── init-sharding.sh          # Initialize sharding
-│   └── add-producer-shard.sh     # Add producer shard (parameterizable)
+├── producer/           # Application producteur (unifiée)
+├── marketplace/        # Application marketplace
+├── mongodb/
+│   ├── docker-compose.yml
+│   ├── init-sharding.sh      # Script 1 (étapes 2 et 5)
+│   └── add-producer.sh       # Script 2 (étapes 3,4,6,7)
 └── README.md
 ```
 
 ---
 
-## Scripts Explanation
+## Technologies
 
-### `init-sharding.sh`
-
-Initializes the MongoDB sharding infrastructure:
-
-- Initializes Config Server replica set
-- Initializes Shard replica sets (shard1, shard2)
-- Adds shards to the mongos router
-- Enables sharding on the `amap` database
-
-### `add-producer-shard.sh`
-
-Configures sharding for a specific producer (parameterizable):
-
-```bash
-./add-producer-shard.sh <producer_id> <shard_name>
-```
-
-- Creates indexes on `producer_id` field
-- Enables sharding on `products` and `orders` collections
-- Splits and moves chunks to the appropriate shard
-
-**Example:**
-
-```bash
-./add-producer-shard.sh mushrooms shard1RS
-./add-producer-shard.sh bread shard2RS
-```
-
----
-
-## Notes
-
-- Authentication is basic (no password encryption) as per project requirements
-- Sessions are stored in memory (lost on application restart)
-- Cart data is stored in HTTP session
-- Applications are configured to work both locally and in Docker (via environment variables)
-- For production use, implement:
-    - Password hashing (BCrypt)
-    - Persistent sessions (Redis/Database)
-    - HTTPS
-    - Input validation
-    - CSRF protection
-
----
-
-## Troubleshooting
-
-### Applications don't start
-
-- Check logs: `docker-compose logs marketplace`
-- Ensure MongoDB is fully initialized before apps start (wait 30-60 seconds)
-
-### Can't connect to MongoDB
-
-- Verify mongos is running: `docker ps`
-- Check MongoDB logs: `docker-compose logs mongos`
-
-### Sharding not working
-
-- Verify sharding status: `docker exec -it mongos mongosh --port 27020 --eval "sh.status()"`
-- Re-run initialization scripts
-
-### Port already in use
-
-- Stop other applications using ports 8080, 8081, 8082
-- Or modify ports in `docker-compose.yml`
-
----
-
-## License
-
-Educational project for Database course - INSA
+- Spring Boot 4.0
+- MongoDB 7.0 (sharding)
+- Docker & Docker Compose
+- Thymeleaf + Tailwind CSS

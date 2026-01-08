@@ -1,0 +1,42 @@
+package com.amap.producer.controller;
+
+import com.amap.producer.config.ProducerConfig;
+import com.amap.producer.model.Order;
+import com.amap.producer.service.OrderService;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+
+import java.util.List;
+
+@Controller
+@RequestMapping("/orders")
+@RequiredArgsConstructor
+public class OrderController {
+    private final OrderService orderService;
+    private final ProducerConfig producerConfig;
+
+    @GetMapping
+    public String listOrders(Model model) {
+        List<Order> orders = orderService.getAllOrdersByProducer(producerConfig.getId());
+        model.addAttribute("orders", orders);
+        model.addAttribute("producerName", producerConfig.getName());
+        return "orders";
+    }
+
+    @PostMapping("/accept/{id}")
+    public String acceptOrder(@PathVariable String id) {
+        orderService.acceptOrder(id);
+        return "redirect:/orders";
+    }
+
+    @PostMapping("/reject/{id}")
+    public String rejectOrder(@PathVariable String id) {
+        orderService.rejectOrder(id);
+        return "redirect:/orders";
+    }
+}

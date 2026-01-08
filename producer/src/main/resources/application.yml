@@ -1,0 +1,12 @@
+spring:
+  application:
+    name: ${PRODUCER_NAME:producer}
+  mongodb:
+    uri: ${SPRING_DATA_MONGODB_URI:mongodb://localhost:27020/amap}
+
+server:
+  port: ${SERVER_PORT:8081}
+
+producer:
+  id: ${PRODUCER_ID:default}
+  name: ${PRODUCER_NAME:Default Producer}
